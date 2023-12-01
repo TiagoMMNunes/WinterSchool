@@ -39,10 +39,10 @@ class DQN(nn.Module):
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
-import gym
+import gymnasium as gym
 import time
 # env = gym.make('CartPole-v0')
-env = gym.make('Alien-v0')
+env = gym.make('CartPole-v1')
 
 # observation = env.reset()
 # action = env.action_space.sample()
