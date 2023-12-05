@@ -444,7 +444,7 @@ class DQN_agent():
         with torch.no_grad():
             # print("huda")
             # print(np.shape(states_torch))
-            # print(np.shape(next_states_torch_non_final))
+            # print(np.shape(next_states_torch_non_final)) ddd
             # print(np.shape(self.target_net(next_states_torch_non_final)))
             next_state_values[non_final_mask] = self.target_net(next_states_torch_non_final).max(1)[0]
 
