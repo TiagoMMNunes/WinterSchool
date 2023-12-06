@@ -656,6 +656,8 @@ while do_random_actions:
         # print(action)
         observation_new, reward, done, info, _ = env.step(action)
 
+        reward = max( min(1, reward), -1)
+
         processed_observation_new = preprocess(observation_new)
 
         image_stack_new[0] = preprocess(observation_new)
