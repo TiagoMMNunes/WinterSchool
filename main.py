@@ -65,6 +65,7 @@ class Replay_Buffer():
         # print(p.sum())
         sample = my_generator.choice(numpy_transitions,size=batch_size, replace=False)
 
+
         return sample
 
     def update_prioritization_weights(self, td_errors, samples, beta):
@@ -88,18 +89,21 @@ class Net(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
 
+        # self.max1 = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+
         self.fc1 = nn.Linear(16384, 512)
         self.fc2 = nn.Linear(512,fout)
 
     def forward(self, x):
-
         x = F.relu(self.conv1(x))
 
         x = F.relu(self.conv2(x))
 
         x = F.relu(self.conv3(x))
+        # x = self.max1(x)
         x = torch.flatten(x, start_dim =  1)
-        x = torch.flatten(x, start_dim =  0)
+        # print(np.shape(x))
+        # x = torch.flatten(x, start_dim =  0)
 
         # flatten all dimensions except the batch dimension
         x = F.relu(self.fc1(x))
@@ -350,6 +354,7 @@ class DQN_agent():
     def update_target_net(self):
         self.target_net.load_state_dict(self.net.state_dict())
         self.target_net.eval()
+
     def act(self, state):
         # Epsilon_greedy actions
         # Generating random number
@@ -397,7 +402,7 @@ class DQN_agent():
         self.net.eval()
         state = state.to(self.device)
         with torch.no_grad():
-            action = self.net(state).max(1)[1].view(1, 1)
+            action = torch.argmax( self.net(state))
 
         self.net.train()
         action = action.item()
@@ -434,7 +439,6 @@ class DQN_agent():
         # states_torch = states_torch.to(self.device)
         # states_torch = torch.div(states_torch, 255)
 
-        next_states_torch = next_states_torch.to(self.device)
         next_states_torch_non_final = torch.from_numpy(next_states)[non_final_mask]
         # next_states_torch_non_final = torch.squeeze(next_states_torch_non_final, dim = 0)
         next_states_torch_non_final = torch.reshape(next_states_torch_non_final, [-1, 4, 84,84])
@@ -489,6 +493,8 @@ class DQN_agent():
         # K-steps update target net
         if Agent.memory.current_memory_size < self.mbsize * 2:
             return 0
+        #
+        # print("dsa")
 
         self.net.train()
 
@@ -642,6 +648,7 @@ while do_random_actions:
         # Select a new action every 6 frames
         if t % 6 == 0 and t > 0:
             observation_old_torch = torch.tensor(np.array(image_stack_old)).cuda().float()
+            observation_old_torch = observation_old_torch.unsqueeze(dim=0)
             # print(np.shape(observation_old_torch))
             # print(t)
             action = Agent.act(observation_old_torch)
@@ -682,7 +689,6 @@ while do_random_actions:
                       t -1 , curr_episode]
             Agent.memory.store_sample(transition)
             Agent.update()
-            print(t)
         old_action = action
         # Convert previous observation into Image (s)
         # gray_old = cv2.cvtColor(observation_old, cv2.COLOR_BGR2GRAY)
@@ -706,7 +712,6 @@ while do_random_actions:
         # Checks if episode has been concluded
 
         if done:
-            print(done)
             episode_not_done = 0
 
         if curr_episode >= max_episodes:
