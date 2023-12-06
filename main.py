@@ -657,7 +657,6 @@ while do_random_actions:
         observation_new, reward, done, info, _ = env.step(action)
 
         reward = max( min(1, reward), -1)
-
         processed_observation_new = preprocess(observation_new)
 
         image_stack_new[0] = preprocess(observation_new)
@@ -690,8 +689,9 @@ while do_random_actions:
             transition = [np.array(image_stack_old) , action, float(reward), np.array(image_stack_new), done, False, 0.1, \
                       t -1 , curr_episode]
             Agent.memory.store_sample(transition)
-            Agent.update()
+
         old_action = action
+        Agent.update()
         # Convert previous observation into Image (s)
         # gray_old = cv2.cvtColor(observation_old, cv2.COLOR_BGR2GRAY)
         # resized_image_old = cv2.resize(gray_old, (84, 84))
