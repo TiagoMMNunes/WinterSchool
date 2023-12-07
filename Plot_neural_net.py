@@ -17,16 +17,20 @@ import torch.nn as nn
 from torch.autograd import Variable
 import datetime
 from pathlib import Path
-from main import DQN_agent
-from main import Net
-from main import Replay_Buffer
+# print("dsa")
+from classes import DQN_agent
+# print("dsa")
+from classes import Net
+# print("dsa")
+from classes import Replay_Buffer
+# print("dsa")
 from PIL import Image, ImageOps
 import gym
 import time
-env = gym.make('ALE/Pong-v5')
-
+# env = gym.make('ALE/Pong-v5')
+print(":")
 # Initialize agent
-net_output_size = env.action_space.n
+net_output_size = 6
 Agent = DQN_agent(n_actions = net_output_size)
 
 # Print nr params of network

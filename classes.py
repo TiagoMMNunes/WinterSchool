@@ -15,8 +15,7 @@ import time
 import math as mh
 import random
 from pathlib import Path
-
-
+import time
 class Replay_Buffer():
     """Function implementing a typical DQN replay buffer
         Author:  Ir. Tiago Nunes, 2023"""
@@ -201,9 +200,9 @@ class DQN_agent():
 
         # Possible actions
         self.possible_actions = list(range(0, self.n_actions))
-        self.saving_path_full = ".\December07.pt"
+        self.saving_path_full = ".\December04.pt"
         # For loading
-        self.checkpoint_path_full = ".\December07.pt"
+        self.checkpoint_path_full = ".\December04.pt"
 
         import platform
         if platform.system() == "Linux" or platform.system() == "MacOS" :
@@ -274,7 +273,7 @@ class DQN_agent():
 
             # checkpoint = torch.load(self.checkpoint_path_full,map_location=lambda storage, loc: storage)
             # Can use GPU whenever you have a large enough VRAM, not the case in this laptop
-            use_gpu = False
+            use_gpu = True
             if self.device == torch.device('cuda:0') and use_gpu:
             # if False:
                 print("Using GPU to load checkpoint\nCheck if you have enough VRAM or might be booted by OS")
@@ -491,7 +490,7 @@ class DQN_agent():
         # Update net
 
         # K-steps update target net
-        if Agent.memory.current_memory_size < self.mbsize * 2:
+        if self.memory.current_memory_size < self.mbsize * 2:
             return 0
         #
         # print("dsa")
@@ -558,173 +557,3 @@ class DQN_agent():
 
         # TO VERIFY: Should MSE be considering the prioritization? The website version considers a weighted MSE
         # where the weights correspond to the diferent p values for prioritization of each sample
-
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
-import gym
-import time
-# With rendering
-# env = gym.make('ALE/Pong-v5', render_mode = "human")
-
-# W/o rendering
-# env = gym.make('ALE/Pong-v5', render_mode = "rgb_array")
-env = gym.make('ALE/Pong-v5')
-# observation = env.reset()
-# action = env.action_space.sample()
-#
-# observation, reward, done, info = env.step(action)
-# TODO: DQN Agent and Network
-
-net_output_size = env.action_space.n
-print("Output size: ", net_output_size)
-Agent = DQN_agent(n_actions = net_output_size)
-
-replay_buffer_Full = False
-curr_episode = -1
-do_random_actions = True
-max_episodes = 1000000
-# Taking random actions
-# By default, as a simplifying measure, demonstrations are collected as random actions using the command
-# env.action_space.sample() command
-
-
-# Importing Image and ImageOps module from PIL package
-from PIL import Image, ImageOps
-
-# Making stacks for new and old observations
-# image_stack_old = [0 , 0 , 0 , 0]
-# image_stack_new = [0 , 0 , 0 , 0]
-
-img_width = 84
-img_height = 84
-
-def preprocess(input_array):
-    # Convert to grascale and plot
-    input_array = np.array(input_array)
-    im2 = Image.fromarray((input_array).astype(np.uint8))
-    im2 = ImageOps.grayscale(im2)
-    # Resize to proper size [84,84]
-    im2 = im2.resize([img_width,img_height])
-    return np.array(im2)
-
-t=0
-total_reward = 0
-while do_random_actions:
-    image_stack_old = [0, 0, 0, 0]
-    image_stack_new = [0, 0, 0, 0]
-    episode_not_done = 1
-    curr_episode += 1
-    observation_old, info = env.reset()
-    old_action = 0
-    action = 0
-
-    observation_old = preprocess(observation_old)
-
-    print("Episode number:", curr_episode)
-    print("Nr Iters:",t)
-    print("Reward:",total_reward)
-    # env.render()
-    curr_episode_length = 0
-    t = 0
-    total_reward = 0
-
-    # if curr_episode > 0 and curr_episode % 20 == 0:
-    #     Agent.save_checkpoint()
-    while episode_not_done:
-        # env.render()
-        # print(observation)
-        # action = env.action_space.sample()
-
-        # observation_fixed_axis = np.moveaxis(observation_old,  -1, 0)
-
-        # Restack and push images
-        image_stack_old[3] = image_stack_old[2]
-        image_stack_old[2] = image_stack_old[1]
-        image_stack_old[1] = image_stack_old[0]
-        image_stack_old[0] = preprocess(observation_old)
-
-        # observation_old_torch = observation_old_torch.unsqueeze(dim=0)
-
-        # Select a new action every 6 frames
-        if t % 4 == 0 and t > 0:
-            observation_old_torch = torch.tensor(np.array(image_stack_old)).cuda().float()
-            observation_old_torch = observation_old_torch.unsqueeze(dim=0)
-            # print(np.shape(observation_old_torch))
-            # print(t)
-            action = Agent.act(observation_old_torch)
-            # print(action)
-        # print(action)
-        observation_new, reward, done, info, _ = env.step(action)
-
-        reward = max( min(1, reward), -1)
-        processed_observation_new = preprocess(observation_new)
-
-        image_stack_new[0] = preprocess(observation_new)
-        image_stack_new[1] = image_stack_old[0]
-        image_stack_new[2] = image_stack_old[1]
-        image_stack_new[3] = image_stack_old[2]
-        # Plotting RGB image
-        # plt.imshow(observation_old)
-        # plt.show()
-
-        # Convert to grascale and plot
-        # im2 = Image.fromarray((observation_old).astype(np.uint8))
-        # im2 = ImageOps.grayscale(im2)
-        # Resize to proper size [84,84]
-        # im2 = im2.resize([img_width,img_height])
-        # print(np.shape(im2))
-        # # print(np.shape(im2))
-        #
-        # im2.show()
-        # import time
-        # time.sleep(5)
-
-
-        # Dont forget to sleep if env.render = on]
-        # time.sleep(2)
-        # plt.imshow(observation_old/255)
-        # plt.show(block = False)
-
-        if t > 0 and t % 4 == 0:
-            transition = [np.array(image_stack_old) , action, float(reward), np.array(image_stack_new), done, False, 0.1, \
-                      t -1 , curr_episode]
-            Agent.memory.store_sample(transition)
-
-        old_action = action
-        Agent.update()
-        # Convert previous observation into Image (s)
-        # gray_old = cv2.cvtColor(observation_old, cv2.COLOR_BGR2GRAY)
-        # resized_image_old = cv2.resize(gray_old, (84, 84))
-        #
-        # # Convert new state into Image (s_)
-        # gray_new = cv2.cvtColor(observation_new, cv2.COLOR_BGR2GRAY)
-        # resized_image_new = cv2.resize(gray_new, (84, 84))
-        #
-        # # Transitions are stored as S, A, R, S_, done, is_demo, weight, idx of sample, curr_episode
-        # transition = [resized_image_old, action, reward, resized_image_new, done, True, demo_sample_weight\
-        #               , t, curr_episode]
-        # transition = np.array(transition)
-
-        # print(action)
-        # If the replay buffer is full then stop collecting demonstrations
-        # if done:
-        #     imgplot = plt.imshow(resized_image_new)
-        #     plt.show()
-        #     time.sleep(2)
-        # Checks if episode has been concluded
-
-        if done:
-            episode_not_done = 0
-
-        if curr_episode >= max_episodes:
-            do_random_actions = False
-        total_reward += reward
-
-        from copy import deepcopy as dp
-        observation_old = dp(observation_new)
-        t += 1
-        curr_episode_length = dp(t)
-
-    Agent.rewards.append(total_reward)
-    Agent.iters_per_episode.append(t)
-env.close()
