@@ -20,7 +20,7 @@ from pathlib import Path
 class Replay_Buffer():
     """Function implementing a typical DQN replay buffer
         Author:  Ir. Tiago Nunes, 2023"""
-    def __init__(self, memory_size = 10000, batch_size = 128):
+    def __init__(self, memory_size = 10000, batch_size = 32):
         #
         self.memory_size = memory_size
 
@@ -56,7 +56,7 @@ class Replay_Buffer():
 
     # Currently applying uniform sampling.
     # Will change to prioritized sampling later on
-    def sample_replay_buffer(self, batch_size=128):
+    def sample_replay_buffer(self, batch_size=64):
         useful_mem_size = min(self.memory_counter, self.memory_size)
         numpy_transitions = np.array(self.stored_transitions[0:useful_mem_size-1])
 
@@ -113,7 +113,7 @@ class Net(nn.Module):
 class DQN_agent():
     """Function implementing a DQN agent.
                 Author:  Ir. Tiago Nunes, 2023"""
-    def __init__(self,eps = 0.8, eps_decay = 0.05, lr = 1e-3,gamma = 0.99, mbsize = 128, C = 500, N = 10000,
+    def __init__(self,eps = 0.8, eps_decay = 0.05, lr = 1e-4,gamma = 0.99, mbsize = 64, C = 500, N = 10000,
                  n_states = 4, n_actions = 2, a = 0.4,
                  training_length = 100000, net_output_size = 6
                  , possible_action_values=[-50, -45, -40, -35, -30, -25, -20, -15, -10, -5, 0\
@@ -193,17 +193,20 @@ class DQN_agent():
         self.log_file = "logging_losses_" + str(self.start_time_pre_train) + ".txt"
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.loss = nn.MSELoss(reduction='none')
+        self.loss = nn.MSELoss(size_average = False, reduce=False)
 
         self.net.to(self.device)
-        self.opt = optim.Adam(self.net.parameters(), weight_decay=1e-5, lr=self.lr,
-                              betas=(0.9, 0.999), amsgrad=True)
+        # self.opt = optim.Adam(self.net.parameters(), weight_decay=1e-5, lr=self.lr,
+        #                       betas=(0.9, 0.999), amsgrad=True)
+        self.opt = optim.RMSprop(self.net.parameters(), weight_decay=1e-5, lr=self.lr,
+                              momentum=0.95)
+
 
         # Possible actions
         self.possible_actions = list(range(0, self.n_actions))
-        self.saving_path_full = ".\December07.pt"
+        self.saving_path_full = ".\December10_newclip.pt"
         # For loading
-        self.checkpoint_path_full = ".\December07.pt"
+        self.checkpoint_path_full = ".\December10_newclip.pt"
 
         import platform
         if platform.system() == "Linux" or platform.system() == "MacOS" :
@@ -467,18 +470,15 @@ class DQN_agent():
         # Calculates expected value based on reward and expected value of next state
         expected_state_values = (next_state_values.cuda() * self.gamma) + rewards_torch
 
-        errors = torch.abs(state_values2 - expected_state_values.unsqueeze(1))
+        errors = state_values2 - expected_state_values.unsqueeze(1)
 
         return state_values2, expected_state_values.unsqueeze(1).float(), errors
     def double_dqn_loss(self, state_values, expected_state_values, weights):
 
         individual_losses = self.loss(state_values, expected_state_values)
 
-        weights2 = weights
-        weights = weights.unsqueeze(dim=0)
-        weights2 = weights2.unsqueeze(1)
-        new_update2 = individual_losses * weights2
-        doubleq_loss = new_update2.mean()
+        doubleq_loss = individual_losses.mean()
+
         return doubleq_loss
 
     def update(self):
@@ -489,7 +489,7 @@ class DQN_agent():
         # Calculate new params predict_net
 
         # Update net
-
+        self.opt.zero_grad()
         # K-steps update target net
         if Agent.memory.current_memory_size < self.mbsize * 2:
             return 0
@@ -508,16 +508,22 @@ class DQN_agent():
         # errors = torch.tensor(errors, device=self.device)
         # TODO: Turn IS weights into identity matrix
         # self.memory.
-        IS_weights = self.memory.update_prioritization_weights(errors.detach(), samples, 0)
+        IS_weights = self.memory.update_prioritization_weights(errors, samples, 0)
 
         Jdouble_q_loss = self.double_dqn_loss(state_values, expected_state_values.detach(), IS_weights.detach())
 
-        Jtd = Jdouble_q_loss
+        errors = torch.clip(errors, min=-1, max=1)
 
-        J = Jdouble_q_loss
-        self.opt.zero_grad()
+        errors = torch.square_(errors)
+        errors = errors.mean()
+        Jtd = errors
+
+        J = errors
+
+        # J = Jdouble_q_loss
+        # self.opt.zero_grad()
         J.backward()
-        torch.nn.utils.clip_grad_value_(self.net.parameters(), 100)
+        # torch.nn.utils.clip_grad_value_(self.net.parameters(), 1)
         self.opt.step()
 
         # Storing losses
@@ -612,6 +618,7 @@ total_reward = 0
 while do_random_actions:
     image_stack_old = [0, 0, 0, 0]
     image_stack_new = [0, 0, 0, 0]
+    reward_stack = [0, 0, 0, 0]
     episode_not_done = 1
     curr_episode += 1
     observation_old, info = env.reset()
@@ -638,10 +645,10 @@ while do_random_actions:
         # observation_fixed_axis = np.moveaxis(observation_old,  -1, 0)
 
         # Restack and push images
-        image_stack_old[3] = image_stack_old[2]
-        image_stack_old[2] = image_stack_old[1]
-        image_stack_old[1] = image_stack_old[0]
-        image_stack_old[0] = preprocess(observation_old)
+        image_stack_old[3] = dp(image_stack_old[2])
+        image_stack_old[2] = dp(image_stack_old[1])
+        image_stack_old[1] = dp(image_stack_old[0])
+        image_stack_old[0] = dp(preprocess(observation_old))
 
         # observation_old_torch = observation_old_torch.unsqueeze(dim=0)
 
@@ -656,13 +663,21 @@ while do_random_actions:
         # print(action)
         observation_new, reward, done, info, _ = env.step(action)
 
-        reward = max( min(1, reward), -1)
+        if reward < 0:
+            reward = -1
+        if reward > 0:
+            reward = 1
         processed_observation_new = preprocess(observation_new)
 
-        image_stack_new[0] = preprocess(observation_new)
-        image_stack_new[1] = image_stack_old[0]
-        image_stack_new[2] = image_stack_old[1]
-        image_stack_new[3] = image_stack_old[2]
+        image_stack_new[0] = dp(preprocess(observation_new))
+        image_stack_new[1] = dp(image_stack_old[0])
+        image_stack_new[2] = dp(image_stack_old[1])
+        image_stack_new[3] = dp(image_stack_old[2])
+
+        reward_stack[3] = dp(reward_stack[2])
+        reward_stack[2] = dp(reward_stack[1])
+        reward_stack[1] = dp(reward_stack[0])
+        reward_stack[0] = dp(reward)
         # Plotting RGB image
         # plt.imshow(observation_old)
         # plt.show()
@@ -684,9 +699,8 @@ while do_random_actions:
         # time.sleep(2)
         # plt.imshow(observation_old/255)
         # plt.show(block = False)
-
         if t > 0 and t % 4 == 0:
-            transition = [np.array(image_stack_old) , action, float(reward), np.array(image_stack_new), done, False, 0.1, \
+            transition = [np.array(image_stack_old) , action, float(np.sum(reward_stack)), np.array(image_stack_new), done, False, 0.1, \
                       t -1 , curr_episode]
             Agent.memory.store_sample(transition)
 

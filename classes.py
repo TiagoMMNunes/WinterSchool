@@ -200,9 +200,9 @@ class DQN_agent():
 
         # Possible actions
         self.possible_actions = list(range(0, self.n_actions))
-        self.saving_path_full = ".\December04.pt"
+        self.saving_path_full = ".\December09_clipped_error.pt"
         # For loading
-        self.checkpoint_path_full = ".\December04.pt"
+        self.checkpoint_path_full = ".\December09_clipped_error.pt"
 
         import platform
         if platform.system() == "Linux" or platform.system() == "MacOS" :

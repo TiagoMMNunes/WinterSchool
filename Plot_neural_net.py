@@ -59,15 +59,15 @@ for i in range(length):
 plt.figure()
 plt.plot(mv)
 plt.title('DQN Learning loss')
-plt.ylabel('Total Loss')
-plt.xlabel('No. of samples')
+plt.ylabel('Total Loss [-]')
+plt.xlabel('No. of samples [-]')
 plt.grid()
 plt.show(block=False)
 
 plt.figure()
 plt.plot(mv[-2000:])
-plt.title('DQN Learning loss, last N iterations')
-plt.ylabel('Total Loss')
+plt.title('DQN Learning loss, last N iterations [-]')
+plt.ylabel('Total Loss [-]')
 plt.xlabel('No. of samples')
 plt.grid()
 plt.show(block=False)
@@ -79,11 +79,13 @@ plt.ylabel('Total Loss')
 plt.xlabel('No. of samples')
 plt.grid()
 plt.show(block=False)
-
+print("dsajb")
 # Reward Plotting
 rewards = Agent.rewards
 mv_rewards=[]
 mv = []
+n=10
+length = len(rewards)
 for i in range(len(rewards)):
     if n < i < length -n:
         suma_rewards = sum((rewards[0+i:i+n]))/n
@@ -91,9 +93,9 @@ for i in range(len(rewards)):
 
 plt.figure()
 plt.plot(mv_rewards)
-plt.title('DQN Learning rewards')
-plt.ylabel('Rewards')
-plt.xlabel('No. of samples')
+plt.title('DQN Learning score')
+plt.ylabel('Score [-]')
+plt.xlabel('No. of samples [-]')
 plt.grid()
 plt.show(block=False)
 
@@ -111,7 +113,7 @@ plt.title('DQN iters per episode [training]')
 plt.ylabel('Nr of iters [-]')
 plt.xlabel('Nr of episodes')
 plt.grid()
-plt.show(block=False)
+plt.show()
 
 
 
