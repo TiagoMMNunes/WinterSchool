@@ -204,9 +204,9 @@ class DQN_agent():
 
         # Possible actions
         self.possible_actions = list(range(0, self.n_actions))
-        self.saving_path_full = ".\December10_newclip.pt"
+        self.saving_path_full = ".\December08_hussarsarrive.pt"
         # For loading
-        self.checkpoint_path_full = ".\December10_newclip.pt"
+        self.checkpoint_path_full = ".\December08_hussarsarrive.pt"
 
         import platform
         if platform.system() == "Linux" or platform.system() == "MacOS" :
@@ -616,13 +616,16 @@ def preprocess(input_array):
 t=0
 total_reward = 0
 while do_random_actions:
+    first_time_pog = True
+    image_stack_rly_old = [0, 0, 0, 0]
     image_stack_old = [0, 0, 0, 0]
     image_stack_new = [0, 0, 0, 0]
-    reward_stack = [0, 0, 0, 0]
+    reward_stack = [0, 0, 0, 0, 0]
+    old_reward = [0,0,0,0]
+    old_action = 0
     episode_not_done = 1
     curr_episode += 1
     observation_old, info = env.reset()
-    old_action = 0
     action = 0
 
     observation_old = preprocess(observation_old)
@@ -654,6 +657,7 @@ while do_random_actions:
 
         # Select a new action every 6 frames
         if t % 4 == 0 and t > 0:
+            old_action = dp(action)
             observation_old_torch = torch.tensor(np.array(image_stack_old)).cuda().float()
             observation_old_torch = observation_old_torch.unsqueeze(dim=0)
             # print(np.shape(observation_old_torch))
@@ -674,6 +678,7 @@ while do_random_actions:
         image_stack_new[2] = dp(image_stack_old[1])
         image_stack_new[3] = dp(image_stack_old[2])
 
+        reward_stack[4] = dp(reward_stack[3])
         reward_stack[3] = dp(reward_stack[2])
         reward_stack[2] = dp(reward_stack[1])
         reward_stack[1] = dp(reward_stack[0])
@@ -700,11 +705,23 @@ while do_random_actions:
         # plt.imshow(observation_old/255)
         # plt.show(block = False)
         if t > 0 and t % 4 == 0:
-            transition = [np.array(image_stack_old) , action, float(np.sum(reward_stack)), np.array(image_stack_new), done, False, 0.1, \
-                      t -1 , curr_episode]
-            Agent.memory.store_sample(transition)
+            if first_time_pog:
+                image_stack_rly_old = dp(image_stack_old)
 
-        old_action = action
+                first_time_pog = False
+            else:
+                old_reward[3] = dp(reward_stack[4])
+                old_reward[2] = dp(reward_stack[3])
+                old_reward[1] = dp(reward_stack[2])
+                old_reward[0] = dp(reward_stack[1])
+                transition = [np.array(image_stack_rly_old) , old_action, float(np.sum(old_reward)),\
+                              np.array(image_stack_old), done, False, 0.1, t -1, curr_episode]
+                Agent.memory.store_sample(transition)
+
+
+                image_stack_rly_old = dp(image_stack_old)
+
+        # old_action = action
         Agent.update()
         # Convert previous observation into Image (s)
         # gray_old = cv2.cvtColor(observation_old, cv2.COLOR_BGR2GRAY)
