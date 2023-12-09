@@ -714,7 +714,7 @@ while do_random_actions:
                 old_reward[2] = dp(reward_stack[3])
                 old_reward[1] = dp(reward_stack[2])
                 old_reward[0] = dp(reward_stack[1])
-                transition = [np.array(image_stack_rly_old) , old_action, float(np.sum(old_reward)),\
+                transition = [np.array(image_stack_rly_old) , old_action, float(np.mean(old_reward)),\
                               np.array(image_stack_old), done, False, 0.1, t -1, curr_episode]
                 Agent.memory.store_sample(transition)
 
@@ -751,7 +751,6 @@ while do_random_actions:
             do_random_actions = False
         total_reward += reward
 
-        from copy import deepcopy as dp
         observation_old = dp(observation_new)
         t += 1
         curr_episode_length = dp(t)
